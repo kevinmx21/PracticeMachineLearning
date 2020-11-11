@@ -1,0 +1,92 @@
+---
+title: "Practical machine learning project"
+author: "Xi, MIAO"
+date: "11/11/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. 
+
+## Downloading and cleaning data
+
+1.Download data from the links as csv
+2.Set invalid data to NA
+3.Remove unnecessary columns
+4.Remove NA columns 
+
+```{r data preparation, echo=TRUE}
+traincsv <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+temptrain <- tempfile()
+download.file(traincsv, temptrain, method = "curl")
+pml_training <- read.csv(temptrain, na.strings = c("NA", "#DIV/0!", ""))
+
+testcsv <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+temptest <- tempfile()
+download.file(testcsv, temptest, method = "curl")
+pml_testing <- read.csv(temptest, na.strings = c("NA", "#DIV/0!", ""))
+
+col_len <- length(colnames(pml_training))
+
+pml_training <- pml_training[,8:col_len]
+pml_testing <- pml_testing[,8:col_len]
+
+col_trainning <- complete.cases(t(pml_training))
+col_test <- complete.cases(t(pml_testing))
+col_complete <- col_trainning & col_test
+
+pml_training <- pml_training[,col_complete]
+pml_testing <- pml_testing[,col_complete]
+
+pml_training$classe <- factor(pml_training$classe)
+```
+
+## Partitioning training data and validation data
+
+Use 70% training data for training and the rest for validation
+
+```{r partitioning, echo=TRUE}
+library(caret)
+set.seed(191211)
+trainset <- createDataPartition(pml_training$classe, p = 0.7, list = FALSE)
+pml_validation <- pml_training[-trainset, ]
+pml_training <- pml_training[trainset, ]
+```
+
+## Model train
+Train model with random forest
+```{r data training, echo=TRUE}
+library(randomForest)
+fit <- randomForest(classe~., data = pml_training,importance=TRUE)
+```
+
+## Model validation
+
+### Training set accuracy
+
+```{r data training accuracy, echo=TRUE}
+pred_train <- predict(fit,pml_training)
+pred_train <- factor(pred_train)
+confusionMatrix(pred_train,pml_training$classe)
+```
+The result is close to 1, the model performs well
+
+### Validation set accuracy
+```{r data validation accuracy, echo=TRUE}
+pred_validation <- predict(fit,pml_validation)
+pred_validation <- factor(pred_validation)
+confusionMatrix(pred_validation,pml_validation$classe)
+```
+The result is close to 1, the model performs well
+
+## Test Prediction
+The prediction of test set is:
+```{r test est prediction, echo=TRUE}
+pred_test <- predict(fit,pml_testing)
+print(pred_test)
+```
